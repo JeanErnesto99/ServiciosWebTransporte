@@ -1,0 +1,77 @@
+{% load static %}
+
+<html>
+<head>
+    <title>Inicio</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('{% static "fondo.jpg" %}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            font-family: Arial, sans-serif;
+        }
+        .content {
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8); /* Fondo del contenido con transparencia */
+            padding: 20px;
+            border-radius: 10px; /* Bordes redondeados */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Sombra alrededor del contenido */
+        }
+        h1 {
+            color: #00a2ff;
+            font-size: 36px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Sombra del texto */
+            margin-bottom: 10px; /* Espacio inferior */
+        }
+
+        h2 {
+            color: #00a2ff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Sombra del texto */
+            font-size: 24px;
+            margin-top: 0; /* Espacio superior */
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #00a2ff; /* Borde del cuadro de texto */
+            border-radius: 5px; /* Bordes redondeados */
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3); /* Sombra alrededor del cuadro de texto */
+        }
+
+        input[type="submit"] {
+            padding: 8px 16px;
+            font-size: 16px;
+            background-color: #00a2ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px; /* Bordes redondeados */
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3); /* Sombra alrededor del botón */
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h2>Introduzca su ubicación(long, lat)</h2>
+        <form action="/validarUbicacion/" method="GET">
+            <input type="text" name="ubicacion">
+            <input type="submit" value="Aceptar">
+            <p style="color: red">Los datos proporcionados no corresponden a una ubicacion valida</p>
+        </form>
+    </div>
+</body>
+</html>
+
+
+
+
+    
+
+   

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Menu de funcionalidades</title>
+    {% load static %}
+    <style>
+        body {
+            background-image: url('{% static "fondo.jpg" %}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        p {
+            font-size: larger;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        form {
+            margin-top: 10px;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 10px;
+            color: #007bff;
+        }
+
+        input[type="text"], select {
+            padding: 8px;
+            font-size: larger;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"], .custom-button {
+            padding: 8px 16px;
+            font-size: larger;
+            color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+       
+
+        .custom-button {
+            background-image: url('/static/crear_ruta.ico');
+            background-size: contain;
+            background-repeat: no-repeat;
+            height: 50px;
+            width: 50px;
+            display: inline-block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: #007bff;
+            font-size: larger;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            text-decoration: underline;
+        }
+
+        .highlight-label {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0056b3;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Menu de funcionalidades</h1>
+        <div class="form-group">
+            <label class="highlight-label">Crear ruta personalizada</label>
+            <a href="{% url 'seleccionar_destino' %}?ubicacion={{ ubicacion }}" class="custom-button"></a>
+        </div>
+
+        <div class="form-group">
+            <label class="highlight-label">Seleccionar funcionalidades secundarias</label>
+            <select id="funcionalidades" onchange="mostrarFormulario()">
+                <option value="" selected disabled></option>
+                <option value="paradaCercana">Obtener paradas más cercanas</option>
+                <option value="rutaCercana">Obtener rutas más cercanas</option>
+                <option value="paradaRadio">Obtener paradas dentro de un radio</option>
+                <option value="rutaRadio">Obtener rutas dentro de un radio</option>
+                <option value="posOmnibus">Obtener posiciones actuales de los ómnibus</option>
+            </select>
+        </div>
+
+        <!-- Aquí van los formularios que se muestran dinámicamente -->
+        <div id="formularios"></div>
+
+        <button class="back-button" onclick="window.location.href='/inicio/'">&#8592; Volver</button>
+    </div>
+
+    <script>
+        function mostrarFormulario() {
+            var seleccion = document.getElementById("funcionalidades").value;
+            var contenedorFormularios = document.getElementById("formularios");
+            contenedorFormularios.innerHTML = "";  // Limpiar el contenido
+
+            if (seleccion === "paradaCercana") {
+                contenedorFormularios.innerHTML = `
+                    <form action="/paradaCercana/" method="GET">
+                        <label for="cantidad">Introduzca la cantidad de resultados deseados:</label>
+                        <input type="text" id="cantidad" name="cantidad" value="1" maxlength="4">
+                        <input type="hidden" name="ubicacion" value="{{ ubicacion }}">
+                        <input type="submit" value="Obtener">
+                    </form>
+                `;
+            } else if (seleccion === "rutaCercana") {
+                contenedorFormularios.innerHTML = `
+                    <form action="/rutaCercana/" method="GET">
+                        <label for="cantidad">Introduzca la cantidad de resultados deseados:</label>
+                        <input type="text" id="cantidad" name="cantidad" value="1" maxlength="4">
+                        <input type="hidden" name="ubicacion" value="{{ ubicacion }}">
+                        <input type="submit" value="Obtener">
+                    </form>
+                `;
+            } else if (seleccion === "paradaRadio") {
+                contenedorFormularios.innerHTML = `
+                    <form action="/paradaRadio/" method="GET">
+                        <label for="radio">Introduzca la longitud deseada de la búsqueda:</label>
+                        <input type="text" id="radio" name="radio" value="100">
+                        <input type="hidden" name="ubicacion" value="{{ ubicacion }}">
+                        <input type="submit" value="Obtener">
+                    </form>
+                `;
+            } else if (seleccion === "rutaRadio") {
+                contenedorFormularios.innerHTML = `
+                    <form action="/rutaRadio/" method="GET">
+                        <label for="radio">Introduzca la longitud deseada de la búsqueda:</label>
+                        <input type="text" id="radio" name="radio" value="100">
+                        <input type="hidden" name="ubicacion" value="{{ ubicacion }}">
+                        <input type="submit" value="Obtener">
+                    </form>
+                `;
+            } else if (seleccion === "posOmnibus") {
+                contenedorFormularios.innerHTML = `
+                    <form action="/pos_omnibus/" method="GET">
+                        <label for="ruta">Introduzca la ruta que desea obtener:</label>
+                        <select id="ruta" name="nombre_ruta">
+                            <option value="" selected disabled></option>
+                            <option value="Todas">Todas las rutas</option>
+                            {% for ruta in rutas %}
+                                <option value="{{ ruta }}">{{ ruta }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" name="ubicacion" value="{{ ubicacion }}">
+                        <input type="submit" value="Obtener">
+                    </form>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

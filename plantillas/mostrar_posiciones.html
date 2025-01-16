@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+        } 
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([23.1136, -82.3666], 11); // Coordenadas iniciales y zoom
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Datos dinámicos obtenidos desde Django 
+        var respuestas = JSON.parse('{{ respuestas|escapejs }}');
+       
+
+        
+
+        // Función de estilo para el MULTILINESTRING
+        function style(feature) {
+            return {
+                color: '#FF4500', // Color Naranja
+                weight: 6,        // Grosor de la línea
+                opacity: 0.8,     // Opacidad de la línea
+                dashArray: '10, 5', // Línea punteada
+                lineJoin: 'round' // Bordes redondeados
+            };
+        }
+
+        // Crear un icono personalizado
+        var customIcon = L.icon({
+            iconUrl: '/static/autobus.png', // Ruta al icono
+            iconSize: [30, 30], // Tamaño del icono
+            iconAnchor: [16, 32], // Punto del icono que corresponderá a la ubicación del marcador
+            popupAnchor: [0, -32] // Punto desde donde se abrirá el popup relativo al iconoAnchor
+        });
+        
+       
+
+        // Función para calcular la distancia entre dos puntos
+        function calcularDistancia(p1, p2) {
+            var dx = p1[0] - p2[0];
+            var dy = p1[1] - p2[1];
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Función para encontrar el punto de inicio más cercano en la ruta para una ubicación dada
+        function encontrarPuntoInicio(ubicacion, puntosRuta) {
+            var puntoInicio = puntosRuta[0];
+            var distanciaMinima = calcularDistancia([ubicacion.long, ubicacion.lat], puntoInicio);
+
+            for (var i = 1; i < puntosRuta.length; i++) {
+                var distancia = calcularDistancia([ubicacion.long, ubicacion.lat], puntosRuta[i]);
+                if (distancia < distanciaMinima) {
+                    distanciaMinima = distancia;
+                    puntoInicio = puntosRuta[i];
+                }
+            }
+            return puntoInicio;
+        }
+
+        // Función para mover el marcador a lo largo de la ruta
+        function animarMarcador(marcador, puntosRuta, indexExtremo) {
+            var i = 0;
+            var avanzando = true; // Indicador de dirección
+            var intervaloTiempo = 300; // msegundos entre cada movimiento
+
+            function mover() {
+                if (avanzando) {
+                    i++;
+                    if (i == indexExtremo) {
+                        i = indexExtremo - 1;
+                        avanzando = false; // Cambiar dirección al llegar al final
+                    }
+                    if(i == puntosRuta.length-1){
+                        i=0;
+                    }
+                } else {
+                    i--;
+                    if (i < 0) {
+                        i = puntosRuta.length-1;
+                    }
+                    if(i == indexExtremo+1){
+                        //i=indexExtremo+1
+                        avanzando = true; // Cambiar dirección al llegar al inicio
+                    }
+                }
+                var punto = puntosRuta[i];
+                marcador.setLatLng([punto[1], punto[0]]);
+
+                setTimeout(mover, intervaloTiempo); // Mover cada intervalo
+            }
+
+            // Iniciar el movimiento desde el punto inicial
+            mover();
+        }
+
+        // Agregar marcadores para cada ubicación y animarlos
+            respuestas.forEach(function(respuesta) {
+            // Señalar ruta
+            var ruta = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": respuesta.coordenadas  
+                },
+            };
+            L.geoJSON(ruta, { style: style }).addTo(map);
+
+            var marker = L.marker([respuesta.lat, respuesta.long], { icon: customIcon }).addTo(map);
+            marker.bindPopup("Ruta: " + respuesta.nombre_ruta + "<br>Placa: " + respuesta.placa);
+
+            // Convertir coordenadas de la ruta en puntos de animación para cada marcador
+            var puntosAnimacion = respuesta.coordenadas.flat();  // Convierte los MultiLineString a un solo array de puntos
+
+            // Encontrar el punto de inicio más cercano en la ruta
+            var puntoInicio = encontrarPuntoInicio(respuesta, puntosAnimacion);
+            var indiceInicio = puntosAnimacion.indexOf(puntoInicio);
+
+            // Crear un subconjunto de puntos de animación a partir del punto de inicio
+            var puntosRutaSubconjunto = puntosAnimacion.slice(indiceInicio).concat(puntosAnimacion.slice(0, indiceInicio));
+
+            var puntoextremo = puntosRutaSubconjunto.indexOf(puntosAnimacion[puntosAnimacion.length-1]);
+            // Iniciar animación del marcador desde el punto inicial
+            animarMarcador(marker, puntosRutaSubconjunto, puntoextremo);
+        });
+    </script>
+</body>
+</html>

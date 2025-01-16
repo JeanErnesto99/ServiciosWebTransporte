@@ -1,0 +1,109 @@
+{% load static %}
+
+<html>
+<head>
+    <title>Rutas resultantes</title>
+    <style>
+        body {
+            background-image: url('{% static "fondo.jpg" %}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: left;
+        }
+
+        h1 {
+            color: #00a2ff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: #00a2ff;
+            font-size: larger;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .back-button:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rutas resultantes</h1>
+
+        <div class="table-container">
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Distancia de usted(en metros)</th>
+                    <th>ID</th>
+                    <th>Itinerario</th>
+                    <th>Distancia del punto de salida(en km)</th>
+                    <th>Recorrido</th>
+                    <th>Ruta</th>
+                    <th>Sentido</th>
+                    <th>Tipo</th>
+                    <th>Terminal</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                </tr>
+                {% for resultado in resultado %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{% if resultado.0 is not None %}{{ resultado.0|floatformat:"2" }}{% else %}No encontrado{% endif %}</td>
+                    <td>{% if resultado.1 is not None %}{{ resultado.1 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.2 is not None %}{{ resultado.2 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.3 is not None %}{{ resultado.3 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.4 is not None %}{{ resultado.4 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.5 is not None %}{{ resultado.5 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.6 is not None %}{{ resultado.6 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.7 is not None %}{{ resultado.7 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.8 is not None %}{{ resultado.8 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.9 is not None %}{{ resultado.9 }}{% else %}No tiene{% endif %}</td>
+                    <td>{% if resultado.9 is not None %}{{ resultado.10 }}{% else %}No tiene{% endif %}</td>
+        
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <button class="back-button" onclick="window.location.href='/inicio/'">&#8592; Volver a inicio</button>
+    </div>
+</body>
+</html>

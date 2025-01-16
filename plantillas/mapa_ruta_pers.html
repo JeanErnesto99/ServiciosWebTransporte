@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ruta personalizada</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+        }
+        .leaflet-popup-content a {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 8px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .lateral-btns {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000; 
+            pointer-events: auto; 
+        }
+
+        .lateral-btns button {
+            background-color: transparent;
+            border: none;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .lateral-btns img {
+            width: 50px;
+            height: 50px;
+        }
+
+        .lateral-btns .selected {
+            box-shadow: 0px 0px 15px 5px rgba(0, 0, 0, 0.5); /* Sombra al botón seleccionado */
+        }
+
+        .info-box {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000; /* Coloca los botones por encima del mapa */
+            pointer-events: auto; /* Permite la interacción con los botones */
+        }
+        #mensaje {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .alerta {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            z-index: 2000;
+        }
+        .notif {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            color: rgb(76, 0, 255);
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="mensaje"></div> 
+
+    <!-- Contenedor de los botones -->
+    <div class="lateral-btns" id="lateralBtns">
+        <button id="btn1"><img src='/static/ruta_foot.ico' alt="Botón 1"></button>
+        <button id="btn2"><img src='/static/ruta_car.ico' alt="Botón 2"></button>
+        <button id="btn3"><img src='/static/ruta_bus.ico' alt="Botón 3"></button>
+    </div>
+
+    <!-- Recuadro de información -->
+    <div class="info-box" id="infoBox">
+        <p id="infoText">Distancia, etc.</p>
+    </div>
+
+    <!-- Alerta para seleccionar destino -->
+    <div class="alerta" id="alertaDestino">Debe seleccionar un destino</div>
+    <!-- Notificacion -->
+    <div class="notif" id="notif">Debe seleccionar un destino</div>
+
+    <!-- Librerías de Leaflet y Polyline -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@mapbox/polyline@1.1.1/index.min.js"></script>
+    <script>
+       
+        // Inicialización del mapa
+        var map = L.map('map').setView([23.1136, -82.3666], 13); // Vista inicial en caso de falta de datos
+
+        // Capa base de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Variables para almacenar rutas en el mapa
+        var rutaFootLayer = null;
+        var rutaCarLayer = null;
+        var busRouteLayers = [];
+        var markers = [];
+
+/////////////////////////////sECCIÓN PARA AÑADIR COSAS EN EL MAPA///////////////////////////////////
+
+        // Función para añadir marcadores
+        function addMarker(lat, lon, popupContent, icon = null) {
+            var markerOptions = icon ? { icon: icon } : {};
+            L.marker([lat, lon], markerOptions).addTo(map).bindPopup(popupContent).openPopup();
+        }
+        function addMarker2(lat, lon, popupContent, icono) {
+            var marker = L.marker([lat, lon], {icon: icono}).addTo(map).bindPopup(popupContent);
+            markers.push(marker);
+        }
+
+        // Función para dibujar las polylines de ubicacion-parada y parada-destino
+        function drawLine(coordinates) {
+        var polylineCaminatas= L.polyline(coordinates, {
+            color: 'blue',   
+            weight: 4,        
+            opacity: 0.7,     
+            dashArray: '10, 10', 
+            smoothFactor: 1,   
+        }).addTo(map);
+        busRouteLayers.push(polylineCaminatas);        
+        }
+
+        // Función para dibujar las polylines de la ruta del bus
+        function drawLine2(coordinates) {
+                // Crear la polyline usando las coordenadas
+                var polylineRuta = L.polyline(coordinates, {
+                    color: 'red',    
+                    weight: 5,        
+                    opacity: 0.7,     
+                    smoothFactor: 1,   
+                }).addTo(map);
+                busRouteLayers.push(polylineRuta); 
+
+                if (rutaCarLayer) {
+                map.removeLayer(rutaCarLayer);
+                }
+                if (rutaFootLayer) {
+                map.removeLayer(rutaFootLayer);
+                }
+            }
+
+        // Función para añadir rutas
+        function addRoute(coordinates, type) {
+            var route = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": coordinates
+                }
+            };
+         
+            // Eliminar la ruta anterior antes de agregar una nueva
+            if (rutaCarLayer) {
+                map.removeLayer(rutaCarLayer);
+            }
+            if (rutaFootLayer) {
+                map.removeLayer(rutaFootLayer);
+            }
+            busRouteLayers.forEach(layer => map.removeLayer(layer));
+            markers.forEach(marker => map.removeLayer(marker));
+            // Limpiar las listas
+            busRouteLayers = [];
+            markers = [];
+    
+
+            // Agregar la nueva ruta según el tipo
+            if (type === 'foot') {
+                rutaFootLayer = L.geoJSON(route, { style: styleRouteFoot() }).addTo(map);
+                   
+            } else if (type === 'car') {
+                rutaCarLayer = L.geoJSON(route, { style: styleRouteCar() }).addTo(map);
+            }}
+
+/////////////////////////////SECCIÓN PARA CONFIG "ESTÉTICA" DE ELEMENTOS///////////////////////////////////
+       
+        var iconoParada = L.icon({
+            iconUrl: '/static/parada.ico', // Ruta a la imagen del ícono
+            iconSize: [30, 31], // Tamaño del ícono en píxeles
+            iconAnchor: [12, 41], // Punto del ícono que se ubicará sobre las coordenadas
+            popupAnchor: [1, -34], // Punto donde se mostrará el popup con respecto al icono
+        });
+            var iconoBus = L.icon({
+            iconUrl: '/static/autobus.png',
+            iconSize: [35, 55],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34]
+        });
+
+        // Función de estilo para las rutas car
+        function styleRouteCar() {
+            return {
+                color: '#FF4500',
+                weight: 6,
+                opacity: 0.8,
+                dashArray: '10, 5',
+                lineJoin: 'round'
+            };
+        }
+        function styleRouteFoot() {
+            return {
+                color: '#0000FF',
+                weight: 6,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                lineJoin: 'round'
+            };
+        }
+
+/////////////////////////////SECCIÓN PARA OBTENER LA INFORMACION////////////////////////////////////////
+
+        // Obtener y mostrar ubicación del usuario
+        var ubicacion = "{{ ubicacion|default:'0,0' }}";
+        var coordenadasU = ubicacion.split(',').map(parseFloat);
+        if (coordenadasU.length === 2 && !isNaN(coordenadasU[0]) && !isNaN(coordenadasU[1])) {
+            var latitudU = coordenadasU[1];
+            var longitudU = coordenadasU[0];
+            addMarker(latitudU, longitudU, 'Tu ubicación');
+            map.setView([latitudU, longitudU], 14); 
+        } else {
+            console.error('Coordenadas de ubicación inválidas:', coordenadasU);
+        }
+
+        // Obtener y mostrar destino 
+        var destinoSeleccionado = false;  
+        var destino = "{{ destino|default:'0,0' }}";
+        var coordenadasD = destino.split(',').map(parseFloat);
+        if (coordenadasD.length === 2 && !isNaN(coordenadasD[0]) && !isNaN(coordenadasD[1]) && destino !== '0,0') {
+            var latitudD = coordenadasD[1];
+            var longitudD = coordenadasD[0];
+            addMarker(latitudD, longitudD, 'Destino');
+            destinoSeleccionado = true;
+        }
+        
+        //Controlar el puntero del destino
+        var marcadorSeleccionado = null;
+        map.on('click', function(e) {
+            var latlng = e.latlng;
+            var lat = latlng.lat;
+            var lng = latlng.lng;
+            if (marcadorSeleccionado) {
+                map.removeLayer(marcadorSeleccionado);
+            }
+            var url = "{% url 'crear_ruta_personalizada' %}";
+            var enlace = url + '?ubicacion=' + encodeURIComponent(ubicacion) + '&destino=' + encodeURIComponent(lat + ',' + lng);
+            marcadorSeleccionado = L.marker([lat, lng]).addTo(map)
+            .bindPopup('<b>Confirmar destino</b><br><a id="confirmarBtn" href="' + enlace + '" style="display: block; width: 100%; text-align: center; padding: 8px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Confirmar</a>')
+            .openPopup();
+        });
+        
+        //////////////////////////////OBTENER DATOS RUTA FOOT
+        var datosRutaFoot;
+        try {
+            datosRutaFoot = JSON.parse('{{ ruta_foot|escapejs }}');
+        } catch (e) {
+            console.error('Error al parsear la ruta:', e);
+            datosRutaFoot = null;
+        }
+        try{
+            var multilineCoordsFoot = JSON.parse(datosRutaFoot.geometria);
+            var resp = datosRutaFoot.resp
+        } catch (e) {
+            datosRutaFoot = null;
+            console.error('Error en la ruta a pie:', e);
+        }
+        ///////////////////////////////OBTENER DATOS RUTA CAR
+        var datosRutaCar;
+        try {
+            datosRutaCar = JSON.parse('{{ ruta_car|escapejs }}');
+        } catch (e) {
+            console.error('Error al parsear la ruta:', e);
+            datosRutaCar = null;
+        }
+        try{
+            var multilineCoordsCar = JSON.parse(datosRutaCar.geometria);
+        } catch (e) {
+            datosRutaCar = null;
+            console.error('Error en la ruta a pie:', e);
+        }
+
+        /////////////////////////////OBTENER DATOS RUTA BUS
+        var busPositions = [];
+        var busRoutes = [];
+        var infobuses = [];
+        var datosRutaBus;
+        try {
+            datosRutaBus = JSON.parse('{{ ruta_bus|escapejs }}');
+        } catch (e) {
+            console.error('Error al parsear la ruta:', e);
+            datosRutaBus = null;
+        }
+        try{
+            if(datosRutaBus.tipo == "directa"){
+                tipo_ruta = "directa"
+                var multilineCoordsFoot_u = datosRutaBus['geometry_u']['coordinates'].map(function(coord) {
+                    return [coord[1], coord[0]]; // Invertir las coordenadas
+                });
+    
+                var multilineCoordsFootd_d = datosRutaBus['geometry_d']['coordinates'].map(function(coord) {
+                    return [coord[1], coord[0]]; // Invertir las coordenadas
+                });
+                
+                var MultiLineCoordsBus = datosRutaBus.bus[1]['coordenadas_ruta']
+                var multilineCoordsBus = MultiLineCoordsBus.map(function(segment) {
+                    return segment.map(function(coord) {
+                        return [coord[1], coord[0]]; // Invertir las coordenadas
+                        });
+                    });
+
+                var parada_u = datosRutaBus.parada_u['ubicacion_in_grafo']
+                    var latitudparada_u = parada_u[1];
+                    var longitudparada_u = parada_u[0];
+                    
+                var parada_d = datosRutaBus.parada_d['ubicacion_in_grafo']
+                    var latitudparada_d = parada_d[1];
+                    var longitudparada_d = parada_d[0];
+
+                var bus_pos = datosRutaBus.bus[1].pos
+                    var latitudbus_pos = bus_pos[1];
+                    var longitudbus_pos = bus_pos[0];
+                var rutabus = datosRutaBus.bus[1].ruta    
+                var placa = datosRutaBus.bus[1].placa
+                var infobus= "Placa:"+placa+"Ruta:"+rutabus
+                
+            }else if(datosRutaBus.tipo == "combinada"){
+                tipo_ruta = "combinada"
+                var multilineCoordsFoot_u = datosRutaBus['geometry_u']['coordinates'].map(function(coord) {
+                    return [coord[1], coord[0]]; // Invertir las coordenadas
+                });
+                
+                var multilineCoordsFootd_d = datosRutaBus['geometry_d']['coordinates'].map(function(coord) {
+                    return [coord[1], coord[0]]; // Invertir las coordenadas
+                });
+
+                var parada_u = datosRutaBus.parada_u['ubicacion_in_grafo']
+                var latitudparada_u = parada_u[1];
+                var longitudparada_u = parada_u[0];
+
+                var parada_d = datosRutaBus.parada_d['ubicacion_in_grafo']
+                var latitudparada_d = parada_d[1];
+                var longitudparada_d = parada_d[0];
+
+                var paradaIntermedia = datosRutaBus['parada_intermedia']['ubicacion_in_grafo'];
+                var latitudIntermedia = paradaIntermedia[1];
+                var longitudIntermedia = paradaIntermedia[0];
+    
+               // Dibujar geometry_i
+                var geometryICoords = datosRutaBus['geometry_i']['coordinates'].map(function(coord) {
+                    return [coord[1], coord[0]]; // Invertir las coordenadas
+                });
+
+                var paradaRadio = datosRutaBus['parada_del_radio'];
+
+                // Almacenar las coordenadas del bus para la ruta combinada
+                datosRutaBus['buses'].forEach(function(bus) {
+                    busPositions.push({ lat: bus[1].pos[1], lon: bus[1].pos[0] });
+                    var busCoords = bus[1]['coordenadas_ruta'].map(function(segment) {
+                        return segment.map(function(coord) {
+                            return [coord[1], coord[0]]; // Invertir las coordenadas
+                        });
+                    });
+                    busRoutes.push(busCoords);
+                    placa = bus[1].placa
+                    rutabus = bus[1].ruta
+                    infobus = "Placa:"+placa+"  Ruta:"+rutabus
+                    infobuses.push(infobus)
+                    });
+            }
+        } catch (e) {
+            datosRutaBus = null;
+            console.error('Error en la ruta con bus:', e);
+        }
+
+/////////////////////////////SECCIÓN PARA LA CONFIGURACION DEL FUNCIONAMIENTO///////////////////////////////////
+
+        function mostrarAlerta(mensaje, id) {
+            var alerta = document.getElementById(id);
+            alerta.textContent = mensaje;
+            alerta.style.display = 'block';
+            setTimeout(function() {
+                alerta.style.display = 'none';
+            }, 2000);
+        }
+
+        function toggleRoute(type) {
+            if (!destinoSeleccionado) {
+                mostrarAlerta("Debe seleccionar un destino", "alertaDestino");
+                return;
+            }
+            document.querySelectorAll('.lateral-btns button').forEach(function(btn) {
+                btn.classList.remove('selected');
+            });
+
+            if (type === 'foot') {
+                document.getElementById('btn1').classList.add('selected');
+                addRoute(multilineCoordsFoot, 'foot')
+            } else if (type === 'car') {
+                document.getElementById('btn2').classList.add('selected');
+                addRoute(multilineCoordsCar, 'car')
+            }else if (type === 'bus') {
+                if(datosRutaBus != null){
+                    if(resp == false){
+                        document.getElementById('btn3').classList.add('selected');
+                        if (tipo_ruta == "directa"){
+                            drawLine(multilineCoordsFoot_u);
+                            drawLine(multilineCoordsFootd_d);
+                            drawLine2(multilineCoordsBus);
+                            addMarker2(latitudparada_u, longitudparada_u, 'Parada A', iconoParada);
+                            addMarker2(latitudparada_d, longitudparada_d, 'Parada B', iconoParada);
+                            addMarker2(latitudbus_pos, longitudbus_pos, infobus, iconoBus);
+                        }else if (tipo_ruta == "combinada") {
+                            drawLine(multilineCoordsFoot_u);
+                            drawLine(multilineCoordsFootd_d);
+                            addMarker2(latitudparada_u, longitudparada_u, 'Parada A', iconoParada);
+                            addMarker2(latitudparada_d, longitudparada_d, 'Parada B', iconoParada);
+                            addMarker2(latitudIntermedia, longitudIntermedia, 'Parada Intermedia A', iconoParada);
+                            drawLine(geometryICoords);
+                            addMarker2(paradaRadio[1], paradaRadio[0], 'Parada Intermedia B', iconoParada);
+                            for (let i = 0; i < busPositions.length; i++) {
+                            mostrarBus(i);
+                            }
+                        }
+                    }else{
+                            mostrarAlerta("No hay rutas en autobus. Es demasiado cerca", "notif");
+                            return;
+                        }
+                }else{
+                    mostrarAlerta("No hay rutas en autobus", "notif");
+                    return; }
+                }
+                }
+        function mostrarBus(busIndex) {
+            if (busIndex < busPositions.length && busIndex < busRoutes.length) {
+                var busPos = busPositions[busIndex];
+                var busRoute = busRoutes[busIndex];
+
+                // Agregar marcador del bus
+                addMarker2(busPos.lat, busPos.lon, infobuses[busIndex], iconoBus);
+
+                // Dibujar ruta del bus
+                drawLine2(busRoute);
+            }
+        }
+        // Funciones para mostrar el recuadro de información 
+        document.getElementById("btn1").addEventListener("click", function() {
+            toggleRoute('foot');
+            document.getElementById("infoText").textContent = "Texto para el botón 1.";
+            document.getElementById("infoBox").style.display = "flex";
+        });
+        document.getElementById("btn2").addEventListener("click", function() {
+            toggleRoute('car');
+            document.getElementById("infoText").textContent = "Texto para el botón 2.";
+            document.getElementById("infoBox").style.display = "flex";
+        });
+        document.getElementById("btn3").addEventListener("click", function() {
+            toggleRoute('bus');
+            document.getElementById("infoText").textContent = "Texto para el botón 3.";
+            document.getElementById("infoBox").style.display = "flex";
+        });
+
+    </script>
+</body>
+</html>
